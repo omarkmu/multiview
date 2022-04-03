@@ -1,4 +1,217 @@
-/* Sets all the text color to red! */
 body {
-    color: red;
+  --mv-lds-color: var(--text-accent);
+  --mv-lds-size: 50px;
+  --mv-lds-stroke: 3px;
+  --mv-pill-color: var(--background-secondary-alt);
+  --mv-pill-left-color: var(--background-primary-alt);
+  --mv-pill-middle-color: var(--background-secondary-alt);
+  --mv-pill-right-color: var(--background-secondary-alt);
+}
+
+.mv-settings-search {
+  width: 100%;
+}
+
+
+/** Dropdowns **/
+.mv-dropdown {
+  float: right;
+  margin-right: 0.1em;
+  margin-bottom: 0.2em;
+  padding-top: 0.2em;
+  padding-bottom: 0.1em;
+  padding-right: 1.75em;
+  padding-left: 0.6em;
+}
+
+
+/** Loading Spinners (adapted from https://loading.io/) **/
+.mv-lds {
+  width: var(--mv-lds-size, 50px);
+  height: var(--mv-lds-size, 50px);
+}
+
+/* rolling */
+.mv-lds-rolling {
+  width: 100%;
+  height: 100%;
+  transform: translateZ(0) scale(1);
+  transform-origin: 0 0;
+  backface-visibility: hidden;
+}
+.mv-lds-rolling > div {
+  width: 95%;
+  height: 95%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: var(--mv-lds-stroke, 3px) solid var(--mv-lds-color, currentColor);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: mv-lds-rolling 1s linear infinite;
+}
+@keyframes mv-lds-rolling {
+  0% { transform: translate(-50%,-50%) rotate(0deg); }
+  100% { transform: translate(-50%,-50%) rotate(360deg); }
+}
+
+/* circle */
+/*
+.mv-lds-circle {
+  width: 100%;
+  height: 100%;
+  transform: translateZ(1px);
+}
+.mv-lds-circle > div {
+  width: 95%;
+  height: 95%;
+  background: var(--mv-lds-color, currentColor);
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  animation: mv-lds-circle 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+@keyframes mv-lds-circle {
+  0%, 100% {
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 0.5);
+  }
+  0% {
+    transform: translate(-50%,-50%) rotateY(0deg);
+  }
+  50% {
+    transform: translate(-50%,-50%) rotateY(1800deg);
+    animation-timing-function: cubic-bezier(0, 0.5, 0.5, 1);
+  }
+  100% {
+    transform: translate(-50%,-50%) rotateY(3600deg);
+  }
+} */
+
+/* heart */
+.mv-lds-heart {
+  position: relative;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 45%;
+  height: 45%;
+}
+.mv-lds-heart > div {
+  position: absolute;
+  top: 62.5%;
+  left: 62.5%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  background: var(--mv-lds-color, currentColor);
+  animation: mv-lds-heart 1.2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+.mv-lds-heart > div:after,
+.mv-lds-heart > div:before {
+  content: " ";
+  position: absolute;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--mv-lds-color, currentColor);
+}
+.mv-lds-heart > div:before {
+  left: -75%;
+  border-radius: 50% 0 0 50%;
+}
+.mv-lds-heart > div:after {
+  top: -75%;
+  border-radius: 50% 50% 0 0;
+}
+@keyframes mv-lds-heart {
+  0% {
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  5% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  39% {
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  45% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+/* ripple */
+.mv-lds-ripple {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.mv-lds-ripple div {
+  position: absolute;
+  border: var(--mv-lds-stroke, 3px) solid var(--mv-lds-color, currentColor);
+  opacity: 1;
+  border-radius: 50%;
+  animation: mv-lds-ripple 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+.mv-lds-ripple div:nth-child(2) {
+  animation-delay: -0.5s;
+}
+@keyframes mv-lds-ripple {
+  0% {
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+}
+
+
+
+/* Pills (adapted from https://github.com/blacksmithgu/obsidian-dataview) */
+.mv-pill {
+  font-family: var(--font-monospace);
+  background-color: var(--mv-pill-color);
+  color: var(--text-nav-selected);
+  font-size: var(--font-adaptive-normal, var(--editor-font-size));
+  font-weight: 100;
+}
+.mv-pill-single {
+  border-radius: 250px;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin-right: 5px;
+}
+.mv-pill-left {
+  border-top-left-radius: 250px;
+  border-bottom-left-radius: 250px;
+  padding-right: 8px;
+  padding-left: 16px;
+  background-color: var(--mv-pill-left-color);
+}
+.mv-pill-middle {
+  border-radius: 0px;
+  padding-right: 8px;
+  padding-left: 8px;
+  background-color: var(--mv-pill-middle-color);
+}
+.mv-pill-right {
+  border-top-right-radius: 250px;
+  border-bottom-right-radius: 250px;
+  padding-left: 8px;
+  padding-right: 16px;
+  margin-right: 5px;
+  background-color: var(--mv-pill-right-color);
 }
