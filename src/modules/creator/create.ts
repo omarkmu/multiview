@@ -189,7 +189,7 @@ export function creator(plugin: MultiviewPlugin, parent?: HTMLElement | (() => H
             ? _href
             : _href?.path ?? ''
         const text = (typeof _href === 'string' ? _text : _text ?? _href?.display)
-			?? (normalize ? normalizeURL(href, internal) : href) ?? ''
+            ?? (normalize ? normalizeURL(href, internal) : href) ?? ''
 
         return create.a({
             ...options,

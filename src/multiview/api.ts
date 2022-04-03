@@ -8,9 +8,9 @@ import { Creator, creator } from '../modules/creator'
 
 
 interface MultiviewRequire {
-	(id: string): unknown
-	readonly cache: Record<string, unknown>
-	readonly extensions: Record<string, ExtensionHandler>
+    (id: string): unknown
+    readonly cache: Record<string, unknown>
+    readonly extensions: Record<string, ExtensionHandler>
 }
 
 
