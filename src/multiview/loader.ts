@@ -110,19 +110,12 @@ export default class Loader {
     get cache() { return this._cache }
     get extensions() { return this._extensions }
 
-    async eval(code: string | string[]): Promise<unknown> {
-        if (!Array.isArray(code)) code = [code]
+    eval(code: string | string[]): unknown {
+        if (Array.isArray(code)) code = code.join('')
 
-        let encoded
-        try {
-            encoded = URL.createObjectURL(new Blob(code, { type: 'text/javascript' }))
-            return await import(encoded)
-        } finally {
-            if (encoded) {
-                // ensure memory is freed
-                URL.revokeObjectURL(encoded)
-            }
-        }
+        return function() {
+            return (0, eval)(code as string)
+        }.call(undefined)
     }
 
     registerExtension(extension: string, handler: ExtensionHandler): ExtensionHandler {
@@ -432,10 +425,17 @@ export default class Loader {
 
     private async _loadFile(path: string): Promise<boolean> {
         try {
-            this._cache[path] = await this.eval([
-                `let multiview=app.plugins.plugins.multiview.api.createProxy('${path.replace("'", "\\'")}');`,
-                await this._plugin.app.vault.adapter.read(path)
-            ])
+            const wrapped = this.eval([
+                '(async function(module, require, multiview){',
+                await this._plugin.app.vault.adapter.read(path),
+                '})'
+            ]) as ((...args: unknown[]) => unknown)
+
+            const proxy = this._plugin.api.createProxy(path)
+            const module = { exports: {} }
+
+            await wrapped(module, proxy.require, proxy)
+            this._cache[path] = module.exports
 
             return this._signal(path, true)
         } catch (e) {
