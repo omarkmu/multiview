@@ -4,6 +4,8 @@ import type { Creator } from './create'
 import type { AudioOptions, EmbedOptions, ImageOptions, PDFEmbedOptions, VideoOptions, YouTubeEmbedOptions } from './types'
 
 
+const youtubePattern = /^(?:https:\/\/(?:(?:youtu.be)|(?:(?:www\.)?youtube\.com))\/(?:watch\?v=)?(?:([^&?]+)(?:[&?]t=(\d+)s?)?))$/
+
 const audioHandler: EmbedHandler = {
     match: extensionMatcher(new Set([
         'MP3',
@@ -40,7 +42,7 @@ const pdfHandler: EmbedHandler = {
     handle: (embed, options) => embed.pdf(options),
 }
 const youtubeHandler: EmbedHandler = {
-    pattern: /^(?:https:\/\/(?:(?:youtu.be)|(?:(?:www\.)?youtube\.com))\/(?:watch\?v=)?(?:([^&?]+)(?:[&?]t=(\d+)s?)?))$/,
+    pattern: youtubePattern,
     handle: (embed, options, matches: RegExpMatchArray) => {
         const [, id, timestamp] = matches
         return embed.youtube({ ...options, id, timestamp })
@@ -513,7 +515,13 @@ class _EmbedCreator extends Function {
         }
 
         embed.youtube = (options) => {
-            const { id, timestamp, width, height, alt } = options
+            const { width, height, alt, url } = options
+            let { id, timestamp } = options
+
+            const matches = url && url.match(youtubePattern)
+            if (matches) {
+                [, id, timestamp] = matches
+            }
 
             return create.span({
                 ...options,

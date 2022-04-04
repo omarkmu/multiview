@@ -66,16 +66,16 @@ export interface VideoOptions extends AudioOptions {
 
 
 interface EmbedOptionsBase extends CreateOptions {
-    embedType?: string
-    alt?: string
+    url: string
     width?: string
     height?: string
-    hash?: string
-    internal?: boolean
+    alt?: string
 }
 
 export interface EmbedOptions extends EmbedOptionsBase {
-    url: string
+    hash?: string
+    embedType?: string
+    internal?: boolean
     source?: string
 }
 
@@ -83,7 +83,7 @@ export interface PDFEmbedOptions extends EmbedOptions {
     page?: number
 }
 
-export interface YouTubeEmbedOptions extends EmbedOptionsBase {
-    id: string
+export interface YouTubeEmbedOptions extends Partial<EmbedOptionsBase> {
+    id?: string
     timestamp?: string
 }
