@@ -4,7 +4,7 @@ import DataHandler from './data'
 import Loader, { ExtensionHandler } from './loader'
 import { MultiviewInstance, MultiviewInitOptions } from './instance'
 import { MultiviewBuilder } from './builder'
-import { Creator, creator } from '../modules/creator'
+import { Creator } from '../modules/creator'
 
 
 interface MultiviewRequire {
@@ -54,7 +54,7 @@ export default class MultiviewAPI {
 
     constructor(public plugin: MultiviewPlugin, data: Record<string, unknown>) {
         this.require = createRequire(this)
-        this.create = creator(plugin)
+        this.create = new Creator(plugin)
         this.data = new DataHandler(plugin, data)
         this.loader = new Loader(plugin, this._getRequireModules())
     }

@@ -64,6 +64,7 @@ export interface VideoOptions extends AudioOptions {
     height?: string
 }
 
+
 interface EmbedOptionsBase extends CreateOptions {
     embedType?: string
     alt?: string
@@ -86,47 +87,3 @@ export interface YouTubeEmbedOptions extends EmbedOptionsBase {
     id: string
     timestamp?: string
 }
-
-
-export type EmbedCreator = {
-    (options: string | EmbedOptions): HTMLElement
-    audio: (options: Omit<EmbedOptions & AudioOptions, 'src'>) => HTMLAudioElement | HTMLSpanElement
-    img(options: Omit<EmbedOptions & ImageOptions, 'src'>): HTMLImageElement | HTMLSpanElement
-    parse(str: string): EmbedOptions
-    pdf(options: PDFEmbedOptions): HTMLSpanElement
-    pdfAsync(options: PDFEmbedOptions): Promise<HTMLSpanElement>
-    video(options: Omit<EmbedOptions & VideoOptions, 'src'>): HTMLVideoElement | HTMLSpanElement
-    youtube(options: YouTubeEmbedOptions): HTMLSpanElement
-}
-
-export interface CreatorCustomElements {
-    <K extends keyof HTMLElementTagNameMap>(tag: K, options?: string | CreateOptions, callback?: (el: HTMLElementTagNameMap[K]) => void): HTMLElementTagNameMap[K]
-    anchor: (options?: string | AnchorOptions, callback?: (el: HTMLAnchorElement) => void) => HTMLAnchorElement
-    audio: (options?: string | AudioOptions, callback?: (el: HTMLAudioElement) => void) => HTMLAudioElement
-    dropdown: (options?: string | DropdownOptions, callback?: (el: HTMLSelectElement) => void) => HTMLSelectElement
-    embed: EmbedCreator
-    icon: (options: string | IconOptions, callback?: (el: SVGElement | null) => void) => SVGElement | null
-    img: (options?: string | ImageOptions, callback?: (el: HTMLImageElement) => void) => HTMLImageElement
-    paragraph: (options?: string | CreateOptions, callback?: (el: HTMLParagraphElement) => void) => HTMLParagraphElement
-    pill: (options?: string | PillOptions, callback?: (el: HTMLDivElement) => void) => HTMLDivElement
-    spinner: (options?: string | SpinnerOptions, callback?: (el: HTMLElement) => void) => HTMLDivElement
-    video: (options?: string | VideoOptions, callback?: (el: HTMLVideoElement) => void) => HTMLVideoElement
-    creator: (parent: HTMLElement | (() => HTMLElement)) => Creator
-}
-
-type DeprecatedElements =
-    | 'dialog'
-    | 'dir'
-    | 'font'
-    | 'frame'
-    | 'frameset'
-    | 'marquee'
-type OverwrittenElements =
-    | 'audio'
-    | 'img'
-    | 'embed'
-    | 'video'
-
-export type Creator = CreatorCustomElements & Omit<{
-    [K in keyof HTMLElementTagNameMap]: (options?: string | CreateOptions, callback?: (el: HTMLElementTagNameMap[K]) => void) => HTMLElementTagNameMap[K]
-}, DeprecatedElements | OverwrittenElements>

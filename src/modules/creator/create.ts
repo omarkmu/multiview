@@ -1,8 +1,19 @@
 import { Component, setIcon } from 'obsidian'
 import MultiviewPlugin from '../../main'
 import { getCSSLength } from './util'
-import { embedCreator } from './embed'
-import { Creator, CreateOptions, EventListenerMap } from './types'
+import { EmbedCreator } from './embed'
+import {
+    AnchorOptions,
+    AudioOptions,
+    CreateOptions,
+    DropdownOptions,
+    EventListenerMap,
+    IconOptions,
+    ImageOptions,
+    PillOptions,
+    SpinnerOptions,
+    VideoOptions
+} from './types'
 
 
 function addEventListeners(node: Node, events: EventListenerMap, component: Component) {
@@ -145,306 +156,343 @@ const tagNames: (keyof HTMLElementTagNameMap)[] = [
     'wbr'
 ]
 
-export function creator(plugin: MultiviewPlugin, parent?: HTMLElement | (() => HTMLElement), owner?: Component) {
-    const getParent = parent instanceof HTMLElement ? (() => parent) : parent
-    owner ??= plugin
 
-    const create = ((tag, options, callback) => {
-        options = typeof options === 'string' ? { cls: options, parent: getParent?.() } : {
-            ...options,
-            parent: options?.parent ?? getParent?.()
+class _Creator extends Function {
+    anchor: (options?: string | AnchorOptions, callback?: (el: HTMLAnchorElement) => void) => HTMLAnchorElement
+    audio: (options?: string | AudioOptions, callback?: (el: HTMLAudioElement) => void) => HTMLAudioElement
+    dropdown: (options?: string | DropdownOptions, callback?: (el: HTMLSelectElement) => void) => HTMLSelectElement
+    embed: EmbedCreator
+    icon: (options: string | IconOptions, callback?: (el: SVGElement | null) => void) => SVGElement | null
+    img: (options?: string | ImageOptions, callback?: (el: HTMLImageElement) => void) => HTMLImageElement
+    paragraph: (options?: string | CreateOptions, callback?: (el: HTMLParagraphElement) => void) => HTMLParagraphElement
+    pill: (options?: string | PillOptions, callback?: (el: HTMLDivElement) => void) => HTMLDivElement
+    spinner: (options?: string | SpinnerOptions, callback?: (el: HTMLElement) => void) => HTMLDivElement
+    video: (options?: string | VideoOptions, callback?: (el: HTMLVideoElement) => void) => HTMLVideoElement
+
+    //@ts-ignore
+    constructor(plugin: MultiviewPlugin, parent?: HTMLElement | (() => HTMLElement), owner?: Component) {
+        const getParent = parent instanceof HTMLElement ? (() => parent) : parent
+        const component = owner ?? plugin
+
+        const create = ((tag, options, callback) => {
+            options = typeof options === 'string' ? { cls: options, parent: getParent?.() } : {
+                ...options,
+                parent: options?.parent ?? getParent?.()
+            }
+
+            const el = createEl(tag, options)
+            if (options.events) addEventListeners(el, options.events, component)
+            if (options.children) el.append(...options.children.filter(n => n))
+
+            callback?.(el)
+            return el
+        }) as Creator
+
+        Object.assign(create, tagNames.reduce((map, tag) => {
+            map[tag] = (options: CreateOptions, callback: (el: HTMLElement) => void) => create(tag, options, callback)
+            return map
+        }, {} as Record<keyof HTMLElementTagNameMap, unknown>))
+
+        create.embed = new EmbedCreator(plugin, create)
+        create.paragraph = create.p
+
+        create.anchor = (options, callback) => {
+            options = (typeof options === 'string' ? { cls: options } : options) ?? {}
+
+            const {
+                cls,
+                text: _text,
+                href: _href='',
+                internal=true,
+                normalize=false,
+                addAriaLabel=true,
+                ariaLabelPosition='top',
+            } = options
+
+            const href = typeof _href === 'string'
+                ? _href
+                : _href?.path ?? ''
+            const text = (typeof _href === 'string' ? _text : _text ?? _href?.display)
+                ?? (normalize ? normalizeURL(href, internal) : href) ?? ''
+
+            return create.a({
+                ...options,
+                href,
+                text,
+                cls: [
+                    internal ? 'internal-link' : 'external-link',
+                    ...(typeof cls === 'string' ? [cls] : cls ?? [])
+                ],
+                attr: {
+                    rel: 'noreferrer', // same functionality as noopener, plus no Referer header is sent
+                    target: '_blank',
+                    ...href && { ['data-href']: href },
+                    ...addAriaLabel && href && href !== text && {
+                        ['aria-label']: href,
+                        ['aria-label-position']: ariaLabelPosition
+                    },
+                    ...options.attr
+                }
+            }, callback)
         }
 
-        const el = createEl(tag, options)
-        if (options.events) addEventListeners(el, options.events, owner)
-        if (options.children) el.append(...options.children.filter(n => n))
+        create.audio = (options, callback) => {
+            options = (typeof options === 'string' ? { cls: options } : options) ?? {}
 
-        callback?.(el)
-        return el
-    }) as Creator
+            const {
+                src,
+                autoplay=false,
+                controls=false,
+                muted=false,
+                loop=false,
+            } = options
 
-    Object.assign(create, tagNames.reduce((map, tag) => {
-        map[tag] = (options: CreateOptions, callback: (el: HTMLElement) => void) => {
-            return create(tag, options, callback)
+            return create('audio', {
+                ...options,
+                attr: {
+                    ...autoplay && {autoplay: ''},
+                    ...controls && {controls: ''},
+                    ...muted && {muted: ''},
+                    ...loop && {loop: ''},
+                    ...src !== null && {src},
+                    referrerPolicy: 'no-referrer',
+                    ...options.attr
+                }
+            }, callback)
         }
-        return map
-    }, {} as Record<keyof HTMLElementTagNameMap, unknown>))
 
-    create.creator = (parent) => creator(plugin, parent)
-    create.embed = embedCreator(plugin, create)
-    create.paragraph = create.p
+        create.dropdown = (options, callback) => {
+            options = (typeof options === 'string' ? { cls: options } : options) ?? {}
 
-    create.anchor = (options, callback) => {
-        options = (typeof options === 'string' ? { cls: options } : options) ?? {}
+            const {
+                options: values=[],
+                selectedIndex=0,
+                cls=null,
+                innerOptions=null
+            } = options
 
-        const {
-            cls,
-            text: _text,
-            href: _href='',
-            internal=true,
-            normalize=false,
-            addAriaLabel=true,
-            ariaLabelPosition='top',
-        } = options
-
-        const href = typeof _href === 'string'
-            ? _href
-            : _href?.path ?? ''
-        const text = (typeof _href === 'string' ? _text : _text ?? _href?.display)
-            ?? (normalize ? normalizeURL(href, internal) : href) ?? ''
-
-        return create.a({
-            ...options,
-            href,
-            text,
-            cls: [
-                internal ? 'internal-link' : 'external-link',
-                ...(typeof cls === 'string' ? [cls] : cls ?? [])
-            ],
-            attr: {
-                rel: 'noreferrer', // same functionality as noopener, plus no Referer header is sent
-                target: '_blank',
-                ...href && { ['data-href']: href },
-                ...addAriaLabel && href && href !== text && {
-                    ['aria-label']: href,
-                    ['aria-label-position']: ariaLabelPosition
-                },
-                ...options.attr
-            }
-        }, callback)
-    }
-
-    create.audio = (options, callback) => {
-        options = (typeof options === 'string' ? { cls: options } : options) ?? {}
-
-        const {
-            src,
-            autoplay=false,
-            controls=false,
-            muted=false,
-            loop=false,
-        } = options
-
-        return create('audio', {
-            ...options,
-            attr: {
-                ...autoplay && {autoplay: ''},
-                ...controls && {controls: ''},
-                ...muted && {muted: ''},
-                ...loop && {loop: ''},
-                ...src !== null && {src},
-                referrerPolicy: 'no-referrer',
-                ...options.attr
-            }
-        }, callback)
-    }
-
-    create.dropdown = (options, callback) => {
-        options = (typeof options === 'string' ? { cls: options } : options) ?? {}
-
-        const {
-            options: values=[],
-            selectedIndex=0,
-            cls=null,
-            innerOptions=null
-        } = options
-
-        return create.select({
-            ...options,
-            cls: [
-                'dropdown',
-                ...(typeof cls === 'string' ? [cls] : cls ?? [])
-            ],
-            children: [
-                ...(options.children ?? []),
-                ...values.map((value, idx) => {
-                    const isNode = typeof value !== 'string'
-                    return create.option({
-                        text: isNode ? '' : value,
-                        ...innerOptions,
-                        cls,
-                        children: isNode && value ? [value] : null,
-                        attr: {
-                            ...innerOptions?.attr,
-                            ...selectedIndex === idx && { selected: '' }
-                        }
+            return create.select({
+                ...options,
+                cls: [
+                    'dropdown',
+                    ...(typeof cls === 'string' ? [cls] : cls ?? [])
+                ],
+                children: [
+                    ...(options.children ?? []),
+                    ...values.map((value, idx) => {
+                        const isNode = typeof value !== 'string'
+                        return create.option({
+                            text: isNode ? '' : value,
+                            ...innerOptions,
+                            cls,
+                            children: isNode && value ? [value] : null,
+                            attr: {
+                                ...innerOptions?.attr,
+                                ...selectedIndex === idx && { selected: '' }
+                            }
+                        })
                     })
-                })
-            ]
-        }, callback)
-    }
-
-    create.icon = (options, callback) => {
-        const div = createDiv()
-
-        if (typeof options === 'string') {
-            options = { icon: options }
+                ]
+            }, callback)
         }
 
-        setIcon(div, options.icon, options.size)
-        const icon = div.firstChild as SVGElement
+        create.icon = (options, callback) => {
+            const div = createDiv()
 
-        const parent = options.parent ?? getParent?.()
-        if (icon && parent) {
-            if (options.prepend) {
-                parent.prepend(icon)
-            } else {
-                parent.appendChild(icon)
+            if (typeof options === 'string') {
+                options = { icon: options }
             }
+
+            setIcon(div, options.icon, options.size)
+            const icon = div.firstChild as SVGElement
+
+            const parent = options.parent ?? getParent?.()
+            if (icon && parent) {
+                if (options.prepend) {
+                    parent.prepend(icon)
+                } else {
+                    parent.appendChild(icon)
+                }
+            }
+
+            callback?.(icon)
+            return icon
         }
 
-        callback?.(icon)
-        return icon
-    }
+        create.img = (options, callback) => {
+            options = (typeof options === 'string' ? { cls: options } : options) ?? {}
 
-    create.img = (options, callback) => {
-        options = (typeof options === 'string' ? { cls: options } : options) ?? {}
+            const {
+                src=null,
+                alt=null,
+                width=null,
+                height=null,
+            } = options
 
-        const {
-            src=null,
-            alt=null,
-            width=null,
-            height=null,
-        } = options
+            return create('img', {
+                ...options,
+                attr: {
+                    ...src !== null && {src},
+                    ...alt !== null && {alt},
+                    ...width !== null && {width},
+                    ...height !== null && {height},
+                    referrerPolicy: 'no-referrer',
+                    ...options.attr
+                }
+            }, callback)
+        }
 
-        return create('img', {
-            ...options,
-            attr: {
-                ...src !== null && {src},
-                ...alt !== null && {alt},
-                ...width !== null && {width},
-                ...height !== null && {height},
-                referrerPolicy: 'no-referrer',
-                ...options.attr
-            }
-        }, callback)
-    }
+        create.pill = (options, callback) => {
+            options = (typeof options === 'string' ? { cls: options } : options) ?? {}
 
-    create.pill = (options, callback) => {
-        options = (typeof options === 'string' ? { cls: options } : options) ?? {}
+            const {
+                values,
+                innerOptions=null
+            } = options
 
-        const {
-            values,
-            innerOptions=null
-        } = options
+            const innerCls = typeof innerOptions?.cls === 'string'
+                ? [innerOptions.cls]
+                : innerOptions?.cls ?? []
 
-        const innerCls = typeof innerOptions?.cls === 'string'
-            ? [innerOptions.cls]
-            : innerOptions?.cls ?? []
+            return create.div({
+                ...options,
+                children: [
+                    ...options.children ?? [],
+                    ...values.map((value, idx) => {
+                        const cls = ['mv-pill', ...innerCls]
 
-        return create.div({
-            ...options,
-            children: [
-                ...options.children ?? [],
-                ...values.map((value, idx) => {
-                    const cls = ['mv-pill', ...innerCls]
+                        if (values.length === 1) {
+                            cls.push('mv-pill-single')
+                        } else if (idx === 0) {
+                            cls.push('mv-pill-left')
+                        } else if (idx === values.length - 1) {
+                            cls.push('mv-pill-right')
+                        } else {
+                            cls.push('mv-pill-middle')
+                        }
 
-                    if (values.length === 1) {
-                        cls.push('mv-pill-single')
-                    } else if (idx === 0) {
-                        cls.push('mv-pill-left')
-                    } else if (idx === values.length - 1) {
-                        cls.push('mv-pill-right')
-                    } else {
-                        cls.push('mv-pill-middle')
+                        const isNode = typeof value !== 'string'
+                        return create.span({
+                            text: isNode ? '' : value,
+                            ...innerOptions,
+                            cls,
+                            children: isNode && value ? [value] : null,
+                        })
+                    })
+                ]
+            }, callback)
+        }
+
+        create.spinner = (options, callback) => {
+            options = (typeof options === 'string' ? { cls: options } : options) ?? {}
+
+            const {
+                id=null,
+                parent=null,
+                cls=null,
+                size: _size=null,
+                stroke=null,
+                color=null,
+                variant='rolling'
+            } = options
+
+            if (id) {
+                let existing
+                for (const spinner of fishAll(`div.mv-lds[data-spinner-id="${id}"]`)) {
+                    const isCopy = !parent || parent.contains(spinner)
+                    if (!existing && isCopy) {
+                        existing = spinner
+                        continue
                     }
 
-                    const isNode = typeof value !== 'string'
-                    return create.span({
-                        text: isNode ? '' : value,
-                        ...innerOptions,
-                        cls,
-                        children: isNode && value ? [value] : null,
-                    })
-                })
-            ]
-        }, callback)
-    }
-
-    create.spinner = (options, callback) => {
-        options = (typeof options === 'string' ? { cls: options } : options) ?? {}
-
-        const {
-            id=null,
-            parent=null,
-            cls=null,
-            size: _size=null,
-            stroke=null,
-            color=null,
-            variant='rolling'
-        } = options
-
-        if (id) {
-            let existing
-            for (const spinner of fishAll(`div.mv-lds[data-spinner-id="${id}"]`)) {
-                const isCopy = !parent || parent.contains(spinner)
-                if (!existing && isCopy) {
-                    existing = spinner
-                    continue
+                    if (isCopy) spinner.detach()
                 }
 
-                if (isCopy) spinner.detach()
+                if (existing) return existing as HTMLDivElement
             }
 
-            if (existing) return existing as HTMLDivElement
+            const size = getCSSLength(_size)
+
+            const styleColor = color ? `--mv-lds-color: ${color};` : ''
+            const styleSize = size ? `--mv-lds-size: ${size};` : ''
+            const styleStroke = stroke ? `--mv-lds-stroke: ${stroke};` : ''
+
+            return create.div({
+                ...options,
+                cls: [
+                    'mv-lds',
+                    ...(typeof cls === 'string' ? [cls] : cls ?? [])
+                ],
+                attr: {
+                    ...options.attr,
+                    ...(styleColor || styleSize || styleStroke) && {
+                        style: `${styleColor}${styleSize}${styleStroke}${options.attr?.style ?? ''}`
+                    },
+                    ...id && { ['data-spinner-id']: id }
+                },
+                children: [
+                    create.div({
+                        cls: `mv-lds-${variant}`,
+                        children: [...Array(spinnerCounts[variant] ?? 1)].map(() => create.div())
+                    })
+                ]
+            }, callback)
         }
 
-        const size = getCSSLength(_size)
+        create.video = (options, callback) => {
+            options = (typeof options === 'string' ? { cls: options } : options) ?? {}
 
-        const styleColor = color ? `--mv-lds-color: ${color};` : ''
-        const styleSize = size ? `--mv-lds-size: ${size};` : ''
-        const styleStroke = stroke ? `--mv-lds-stroke: ${stroke};` : ''
+            const {
+                autoplay=false,
+                controls=false,
+                muted=false,
+                loop=false,
+                src=null,
+                width=null,
+                height=null,
+            } = options
 
-        return create.div({
-            ...options,
-            cls: [
-                'mv-lds',
-                ...(typeof cls === 'string' ? [cls] : cls ?? [])
-            ],
-            attr: {
-                ...options.attr,
-                ...(styleColor || styleSize || styleStroke) && {
-                    style: `${styleColor}${styleSize}${styleStroke}${options.attr?.style ?? ''}`
-                },
-                ...id && { ['data-spinner-id']: id }
-            },
-            children: [
-                create.div({
-                    cls: `mv-lds-${variant}`,
-                    children: [...Array(spinnerCounts[variant] ?? 1)].map(() => create.div())
-                })
-            ]
-        }, callback)
+            return create('video', {
+                ...options,
+                attr: {
+                    ...autoplay && {autoplay: ''},
+                    ...controls && {controls: ''},
+                    ...muted && {muted: ''},
+                    ...loop && {loop: ''},
+                    ...width !== null && {width},
+                    ...height !== null && {height},
+                    ...src !== null && {src},
+                    referrerPolicy: 'no-referrer',
+                    ...options.attr
+                }
+            }, callback)
+        }
+
+        Object.setPrototypeOf(create, _Creator.prototype)
+        return create
     }
+}
 
-    create.video = (options, callback) => {
-        options = (typeof options === 'string' ? { cls: options } : options) ?? {}
 
-        const {
-            autoplay=false,
-            controls=false,
-            muted=false,
-            loop=false,
-            src=null,
-            width=null,
-            height=null,
-        } = options
+type DeprecatedElements =
+    | 'dialog'
+    | 'dir'
+    | 'font'
+    | 'frame'
+    | 'frameset'
+    | 'marquee'
+type OverwrittenElements =
+    | 'audio'
+    | 'img'
+    | 'embed'
+    | 'video'
+type ExcludedElements = DeprecatedElements | OverwrittenElements
 
-        return create('video', {
-            ...options,
-            attr: {
-                ...autoplay && {autoplay: ''},
-                ...controls && {controls: ''},
-                ...muted && {muted: ''},
-                ...loop && {loop: ''},
-                ...width !== null && {width},
-                ...height !== null && {height},
-                ...src !== null && {src},
-                referrerPolicy: 'no-referrer',
-                ...options.attr
-            }
-        }, callback)
-    }
-
-    return create
+export type Creator = _Creator & {
+    <K extends keyof HTMLElementTagNameMap>(tag: K, options?: string | CreateOptions, callback?: (el: HTMLElementTagNameMap[K]) => void): HTMLElementTagNameMap[K]
+} & Omit<{
+    [K in keyof HTMLElementTagNameMap]: (options?: string | CreateOptions, callback?: (el: HTMLElementTagNameMap[K]) => void) => HTMLElementTagNameMap[K]
+}, ExcludedElements>
+export const Creator = _Creator as {
+    new(plugin: MultiviewPlugin, parent?: HTMLElement | (() => HTMLElement), owner?: Component): Creator
 }

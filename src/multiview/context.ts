@@ -1,4 +1,4 @@
-import { Creator, DropdownOptions, creator } from '../modules/creator'
+import { Creator, DropdownOptions } from '../modules/creator'
 import { MultiviewState } from './navigator'
 import { MultiviewInstance, MultiviewIndex } from './instance'
 import { PageView, SectionView } from './view'
@@ -12,7 +12,7 @@ export abstract class MultiviewContext {
     protected _create: Creator
 
     constructor(protected _instance: MultiviewInstance, protected _index: MultiviewIndex, protected _view: unknown) {
-        this._create = creator(this._instance.plugin, ()=> this.container, this._instance)
+        this._create = new Creator(this._instance.plugin, ()=> this.container, this._instance)
     }
 
     abstract get container(): HTMLElement
