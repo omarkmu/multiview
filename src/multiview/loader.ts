@@ -97,14 +97,6 @@ export default class Loader {
     get cache() { return this._cache }
     get extensions() { return this._extensions }
 
-    eval(code: string | string[]): unknown {
-        if (Array.isArray(code)) code = code.join('')
-
-        return function() {
-            return (0, eval)(code as string)
-        }.call(undefined)
-    }
-
     registerExtension(extension: string, handler: ExtensionHandler): ExtensionHandler {
         if (handler) {
             this._extensions[extension.toLowerCase()] = handler
@@ -116,8 +108,8 @@ export default class Loader {
     }
 
     registerModule(id: string, module: ModuleCallback): ModuleCallback {
-        if (id.startsWith('/')) {
-            throw new Error('module ID cannot start with /')
+        if (id.startsWith('/') || id.startsWith('.')) {
+            throw new Error(`invalid module ID: ${id}`)
         }
 
         this._modules[id] = module
@@ -405,11 +397,11 @@ export default class Loader {
 
     private async _loadFile(path: string): Promise<boolean> {
         try {
-            const wrapped = this.eval([
+            const wrapped = (0, eval)([
                 '(async function(module, require, multiview){',
                 await this._plugin.app.vault.adapter.read(path),
                 '})'
-            ]) as ((...args: unknown[]) => unknown)
+            ].join('')) as ((...args: unknown[]) => unknown)
 
             const proxy = this._plugin.api.createProxy(path)
             const module = { exports: {} }
