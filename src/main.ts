@@ -1,5 +1,6 @@
 import { Plugin, PluginSettingTab, Setting } from 'obsidian'
 import DataHandler, { LoadOrderEntry } from './multiview/data'
+import { MultiviewInstance } from './multiview/instance'
 import MultiviewAPI from './multiview/api'
 
 export default class MultiviewPlugin extends Plugin {
@@ -13,7 +14,10 @@ export default class MultiviewPlugin extends Plugin {
         this.addCommand({
             id: 'reload-modules',
             name: 'Reload JavaScript modules',
-            callback: this.api.loader.reload.bind(this.api.loader)
+            callback: () => {
+                MultiviewInstance.clearInstances()
+                this.api.loader.reload()
+            }
         })
 
         if (this.api.data.getSetting('enableMultiviewGlobal')) {

@@ -102,6 +102,17 @@ export class MultiviewInstance extends MarkdownRenderChild {
     sectionContext: Record<MultiviewIndex, SectionContext> = {}
 
     private static _instanceMap: Record<string, MultiviewInstance[]> = {}
+    private static _freeInstances: Set<MultiviewInstance> = new Set()
+
+    static clearInstances() {
+        for (const instance of Object.values(this._instanceMap).flat()) {
+            instance.component.removeChild(instance)
+        }
+
+        for (const instance of this._freeInstances) {
+            instance.component.removeChild(instance)
+        }
+    }
 
     private static _broadcast(instance: MultiviewInstance, idx: MultiviewIndex, options: MultiviewGoOptions) {
         if (!instance.id || !this._instanceMap[instance.id]) return
@@ -222,6 +233,9 @@ export class MultiviewInstance extends MarkdownRenderChild {
 
     onunload(): void {
         MultiviewInstance._deregisterInstance(this)
+
+        for (const el of Object.values(this.content).flat()) el.detach()
+        for (const el of Object.values(this.sectionContent).flat()) el.detach()
     }
 
 
