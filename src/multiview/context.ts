@@ -29,7 +29,6 @@ export abstract class MultiviewContext {
     set clearOnLoad(value) { this._instance.options.clearOnLoad = value }
 
     get id() { return this._instance.id }
-    set id(value) { this._instance.id = value }
 
     get resetScroll() { return this._instance.options.resetScroll }
     set resetScroll(value) { this._instance.options.resetScroll = value }

@@ -17,6 +17,7 @@ interface MultiviewGoOptions {
     newState?: MultiviewState
     replace?: boolean
     oldIndex?: MultiviewIndex
+    enableSync?: boolean
 }
 
 interface MultiviewOptions {
@@ -24,6 +25,7 @@ interface MultiviewOptions {
     trackHistory: boolean
     clearOnLoad: boolean
     resetScroll: boolean
+    enableSync: boolean
 }
 
 export interface MultiviewInitOptions extends Partial<MultiviewOptions> {
@@ -99,6 +101,37 @@ export class MultiviewInstance extends MarkdownRenderChild {
     sectionContent: Record<MultiviewIndex, HTMLElement> = {}
     sectionContext: Record<MultiviewIndex, SectionContext> = {}
 
+    private static _instanceMap: Record<string, MultiviewInstance[]> = {}
+
+    private static _broadcast(instance: MultiviewInstance, idx: MultiviewIndex, options: MultiviewGoOptions) {
+        if (!instance.id || !this._instanceMap[instance.id]) return
+        if (!instance.options.enableSync || options.enableSync === false) return
+
+        for (const other of this._instanceMap[instance.id]) {
+            if (other === instance) continue
+            other.go(idx, { ...options, enableSync: false })
+        }
+    }
+
+    private static _deregisterInstance(instance: MultiviewInstance) {
+        if (!instance.id || !(instance.id in this._instanceMap)) return
+
+        this._instanceMap[instance.id].remove(instance)
+        if (this._instanceMap[instance.id].length === 0) {
+            delete this._instanceMap[instance.id]
+        }
+    }
+
+    private static _registerInstance(instance: MultiviewInstance) {
+        if (!instance.id) return
+
+        if (!(instance.id in this._instanceMap)) {
+            this._instanceMap[instance.id] = []
+        }
+
+        this._instanceMap[instance.id].push(instance)
+    }
+
 
     constructor(public plugin: MultiviewPlugin, options: MultiviewInitOptions) {
         const {
@@ -117,6 +150,7 @@ export class MultiviewInstance extends MarkdownRenderChild {
             trackHistory=false,
             clearOnLoad=true,
             resetScroll=true,
+            enableSync=true
         } = options
 
         const views = {..._views}
@@ -160,7 +194,8 @@ export class MultiviewInstance extends MarkdownRenderChild {
             autosave,
             trackHistory,
             clearOnLoad,
-            resetScroll
+            resetScroll,
+            enableSync
         }
 
         this.sectionOrdering = Object.entries(sections)
@@ -181,7 +216,12 @@ export class MultiviewInstance extends MarkdownRenderChild {
 
 
     onload(): void {
+        MultiviewInstance._registerInstance(this)
         this.go(this.navigator.index, { replace: false })
+    }
+
+    onunload(): void {
+        MultiviewInstance._deregisterInstance(this)
     }
 
 
@@ -209,6 +249,7 @@ export class MultiviewInstance extends MarkdownRenderChild {
 
     async go(idx: MultiviewIndex, options?: MultiviewGoOptions): Promise<void> {
         if (!this.views[idx]) return Promise.reject(`${idx} is not a valid view index`)
+        MultiviewInstance._broadcast(this, idx, options)
 
         const oldIdx = options?.oldIndex ?? this.navigator.index
         const replace = options?.replace ?? true
