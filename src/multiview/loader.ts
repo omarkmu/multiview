@@ -1,5 +1,6 @@
 import { Notice, TFile, TFolder } from 'obsidian'
 import MultiviewPlugin from '../main'
+import { MultiviewInstance } from './instance'
 
 type ModuleAwaiter = (success: boolean, err?: unknown) => void
 export type ExtensionHandler = (info: { path: string, source: string, skip: symbol }) => Promise<unknown>
@@ -326,6 +327,8 @@ export default class Loader {
             const s = failures === 1 ? '' : 's'
             new Notice(`[Multiview] ${failures} user module${s} failed to load. Please see the console for more information.`)
         }
+
+        MultiviewInstance.clearInstances()
 
         if (this._plugin.app.plugins.enabledPlugins.has('dataview')) {
             this._plugin.app.plugins.plugins.dataview?.api?.index?.touch()

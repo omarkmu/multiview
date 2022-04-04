@@ -133,11 +133,18 @@ export class MultiviewInstance extends MarkdownRenderChild {
             return
         }
 
+        let index
         if (!(instance._id in this._instanceMap)) {
             this._instanceMap[instance._id] = new Set()
+        } else if (instance._options.enableSync) {
+            for (const other of this._instanceMap[instance._id]) {
+                if (!other._options.enableSync) continue
+                index = other._navigator.index
+            }
         }
 
         this._instanceMap[instance._id].add(instance)
+        return index
     }
 
     private _component: Component
@@ -256,8 +263,8 @@ export class MultiviewInstance extends MarkdownRenderChild {
 
 
     onload(): void {
-        MultiviewInstance._registerInstance(this)
-        this.go(this._navigator.index, { replace: false })
+        const syncIndex = MultiviewInstance._registerInstance(this)
+        this.go(syncIndex ?? this._navigator.index, { replace: false })
     }
 
     onunload(): void {

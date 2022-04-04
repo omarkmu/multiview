@@ -12,7 +12,7 @@ export abstract class MultiviewContext {
     protected _create: Creator
 
     constructor(protected _instance: MultiviewInstance, protected _index: MultiviewIndex, protected _view: unknown) {
-        this._create = creator(this._instance.plugin, ()=> this.container)
+        this._create = creator(this._instance.plugin, ()=> this.container, this._instance)
     }
 
     abstract get container(): HTMLElement

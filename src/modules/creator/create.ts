@@ -1,14 +1,15 @@
-import { setIcon } from 'obsidian'
+import { Component, setIcon } from 'obsidian'
 import MultiviewPlugin from '../../main'
 import { getCSSLength } from './util'
 import { embedCreator } from './embed'
 import { Creator, CreateOptions, EventListenerMap } from './types'
 
 
-function addEventListeners(node: Node, events: EventListenerMap) {
+function addEventListeners(node: Node, events: EventListenerMap, component: Component) {
     for (const [event, listener] of Object.entries(events)) {
         if (!events.hasOwnProperty(event)) continue
         node.addEventListener(event, listener)
+        component.register(() => node.removeEventListener(event, listener))
     }
 }
 
@@ -144,8 +145,9 @@ const tagNames: (keyof HTMLElementTagNameMap)[] = [
     'wbr'
 ]
 
-export function creator(plugin: MultiviewPlugin, parent?: HTMLElement | (() => HTMLElement)) {
+export function creator(plugin: MultiviewPlugin, parent?: HTMLElement | (() => HTMLElement), owner?: Component) {
     const getParent = parent instanceof HTMLElement ? (() => parent) : parent
+    owner ??= plugin
 
     const create = ((tag, options, callback) => {
         options = typeof options === 'string' ? { cls: options, parent: getParent?.() } : {
@@ -154,7 +156,7 @@ export function creator(plugin: MultiviewPlugin, parent?: HTMLElement | (() => H
         }
 
         const el = createEl(tag, options)
-        if (options.events) addEventListeners(el, options.events)
+        if (options.events) addEventListeners(el, options.events, owner)
         if (options.children) el.append(...options.children.filter(n => n))
 
         callback?.(el)
@@ -375,12 +377,13 @@ export function creator(plugin: MultiviewPlugin, parent?: HTMLElement | (() => H
         if (id) {
             let existing
             for (const spinner of fishAll(`div.mv-lds[data-spinner-id="${id}"]`)) {
-                if (!existing && (!parent || parent.contains(spinner))) {
+                const isCopy = !parent || parent.contains(spinner)
+                if (!existing && isCopy) {
                     existing = spinner
                     continue
                 }
 
-                spinner.detach()
+                if (isCopy) spinner.detach()
             }
 
             if (existing) return existing as HTMLDivElement
