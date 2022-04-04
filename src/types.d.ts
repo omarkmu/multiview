@@ -1,5 +1,5 @@
-import MultiviewAPI from './multiview/api'
-import { DataviewAPI } from 'obsidian-dataview'
+import type { MultiviewAPI } from './multiview/api'
+import type { DataviewAPI } from 'obsidian-dataview'
 
 declare global {
     interface Window {

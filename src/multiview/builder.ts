@@ -1,12 +1,12 @@
-import MultiviewPlugin from 'src/main'
-import { MultiviewIndex, MultiviewInitOptions } from './instance'
-import { PageView, SectionView } from './view'
+import type MultiviewPlugin from 'src/main'
+import type { MultiviewIndex, MultiviewInitOptions } from './instance'
+import type { PageView, SectionView } from './view'
 
-type PageViewCallback = (builder: MultiviewBuilder) => PageView
-type SectionViewCallback = (builder: MultiviewBuilder) => SectionView
 
 export class MultiviewBuilder {
     private _options: MultiviewInitOptions
+
+
     constructor(private _plugin: MultiviewPlugin, options: MultiviewInitOptions) {
         this._options = {
             ...options,
@@ -18,6 +18,7 @@ export class MultiviewBuilder {
             }
         }
     }
+
 
     render(): this {
         this._plugin.api.render(this._options)
@@ -66,3 +67,6 @@ export class MultiviewBuilder {
         return this
     }
 }
+
+type PageViewCallback = (builder: MultiviewBuilder) => PageView
+type SectionViewCallback = (builder: MultiviewBuilder) => SectionView

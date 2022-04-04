@@ -1,67 +1,8 @@
 import { Component, MarkdownRenderChild, MarkdownView, Workspace } from 'obsidian'
 import { PageContext, SectionContext } from './context'
 import { MultiviewState, MultiviewNavigator } from './navigator'
-import { PageView, SectionView } from './view'
-import MultiviewPlugin from '../main'
-
-export type MultiviewIndex = number | string
-
-
-interface ViewInfo<V, C> {
-    container?: HTMLElement
-    context?: C
-    index: MultiviewIndex
-    view: V
-}
-
-type PageInfo = ViewInfo<PageView, PageContext>
-
-interface SectionInfo extends ViewInfo<SectionView, SectionContext> {
-    order: number
-}
-
-interface MultiviewGoOptions {
-    newState?: MultiviewState
-    replace?: boolean
-    updateHistory?: boolean
-    enableSync?: boolean
-}
-
-interface MultiviewOptions {
-    autosave: boolean
-    trackHistory: boolean
-    clearOnLoad: boolean
-    resetScroll: boolean
-    enableSync: boolean
-}
-
-export interface MultiviewInitOptions extends Partial<MultiviewOptions> {
-    parent: { component?: Component, container: HTMLElement }
-    views: Record<MultiviewIndex, PageView>
-    id?: string
-    loadState?: boolean
-    sections?: Record<MultiviewIndex, SectionView>
-    header?: SectionView
-    footer?: SectionView
-    state?: MultiviewState
-    defaultState?: MultiviewState
-    index?: MultiviewIndex
-    defaultIndex?: MultiviewIndex
-}
-
-interface ObsidianView extends MarkdownView {
-    headerEl?: HTMLElement
-}
-
-interface ObsidianSplitChild {
-    view?: ObsidianView
-    containerEl?: HTMLElement
-    children?: ObsidianSplitChild[]
-}
-
-interface ObsidianSplit {
-    children: ObsidianSplitChild[]
-}
+import type { PageView, SectionView } from './view'
+import type MultiviewPlugin from '../main'
 
 
 function getContainingView(workspace: Workspace, el: HTMLElement): ObsidianView {
@@ -95,6 +36,7 @@ function getContainingView(workspace: Workspace, el: HTMLElement): ObsidianView 
 export class MultiviewInstance extends MarkdownRenderChild {
     private static _instanceMap: Record<string, Set<MultiviewInstance>> = {}
     private static _freeInstances: Set<MultiviewInstance> = new Set()
+
 
     static clearInstances() {
         for (const set of Object.values(this._instanceMap).flat()) {
@@ -147,6 +89,7 @@ export class MultiviewInstance extends MarkdownRenderChild {
         this._instanceMap[instance._id].add(instance)
         return index
     }
+
 
     private _component: Component
     private _container: HTMLElement
@@ -424,4 +367,62 @@ export class MultiviewInstance extends MarkdownRenderChild {
 
         return true
     }
+}
+
+
+export type MultiviewIndex = number | string
+type PageInfo = ViewInfo<PageView, PageContext>
+
+interface ViewInfo<V, C> {
+    container?: HTMLElement
+    context?: C
+    index: MultiviewIndex
+    view: V
+}
+
+interface SectionInfo extends ViewInfo<SectionView, SectionContext> {
+    order: number
+}
+
+interface MultiviewGoOptions {
+    newState?: MultiviewState
+    replace?: boolean
+    updateHistory?: boolean
+    enableSync?: boolean
+}
+
+interface MultiviewOptions {
+    autosave: boolean
+    trackHistory: boolean
+    clearOnLoad: boolean
+    resetScroll: boolean
+    enableSync: boolean
+}
+
+export interface MultiviewInitOptions extends Partial<MultiviewOptions> {
+    parent: { component?: Component, container: HTMLElement }
+    views: Record<MultiviewIndex, PageView>
+    id?: string
+    loadState?: boolean
+    sections?: Record<MultiviewIndex, SectionView>
+    header?: SectionView
+    footer?: SectionView
+    state?: MultiviewState
+    defaultState?: MultiviewState
+    index?: MultiviewIndex
+    defaultIndex?: MultiviewIndex
+}
+
+interface ObsidianView extends MarkdownView {
+    headerEl?: HTMLElement
+}
+
+interface ObsidianSplitChild {
+    view?: ObsidianView
+    containerEl?: HTMLElement
+    children?: ObsidianSplitChild[]
+}
+
+interface ObsidianSplit {
+    children: ObsidianSplitChild[]
 }

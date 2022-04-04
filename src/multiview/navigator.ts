@@ -1,17 +1,12 @@
-import { MultiviewInstance, MultiviewIndex } from './instance'
+import type { MultiviewInstance, MultiviewIndex } from './instance'
 
-export type MultiviewState = Record<string, unknown>
-
-export interface NavigatorEntry {
-    state: MultiviewState
-    index: MultiviewIndex
-}
 
 export class MultiviewNavigator {
     private _backEntries: NavigatorEntry[] = []
     private _forwardEntries: NavigatorEntry[] = []
     private _entry: NavigatorEntry
     private _limit: number
+
 
     constructor(private _instance: MultiviewInstance, state: MultiviewState, index: MultiviewIndex) {
         this._limit = 50
@@ -20,6 +15,7 @@ export class MultiviewNavigator {
             index
         }
     }
+
 
     get canGoBack() { return this._backEntries.length > 0 }
     get canGoForward() { return this._forwardEntries.length > 0 }
@@ -91,4 +87,12 @@ export class MultiviewNavigator {
 
         return this._instance.go(this._entry.index, { newState: this._entry.state, updateHistory: false })
     }
+}
+
+
+export type MultiviewState = Record<string, unknown>
+
+export interface NavigatorEntry {
+    state: MultiviewState
+    index: MultiviewIndex
 }

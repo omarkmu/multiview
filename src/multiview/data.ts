@@ -1,15 +1,6 @@
-import MultiviewPlugin from '../main'
-import { NavigatorEntry } from './navigator'
+import type MultiviewPlugin from '../main'
+import type { NavigatorEntry } from './navigator'
 
-
-export interface LoadOrderEntry {
-    paths: string[]
-}
-
-export interface MultiviewSettings {
-    enableMultiviewGlobal: boolean
-    loadOrder: LoadOrderEntry[]
-}
 
 const PERSISTENCE = 'mv.persistence'
 const SETTINGS = 'mv.settings'
@@ -18,9 +9,14 @@ const RESERVED = new Set([
     SETTINGS
 ])
 
-export default class DataHandler {
-    private _disconnected = false
-    constructor(private _plugin: MultiviewPlugin, private _data?: Record<string, unknown>) { }
+
+export class DataHandler {
+    private static _disconnected = new Set<DataHandler>()
+
+
+    static disconnect(handler: DataHandler): void {
+        DataHandler._disconnected.add(handler)
+    }
 
     static async load(plugin: MultiviewPlugin): Promise<Record<string, unknown>> {
         const data = await plugin.loadData() ?? {}
@@ -31,14 +27,19 @@ export default class DataHandler {
 
         return {
             ...data,
-            [SETTINGS]: { // default settings
+            [SETTINGS]: {
                 ...defaultSettings,
                 ...data[SETTINGS]
             }
         }
     }
 
+
+    constructor(private _plugin: MultiviewPlugin, private _data?: Record<string, unknown>) { }
+
+
     get settings(): MultiviewSettings { return this._data[SETTINGS] as MultiviewSettings }
+
 
     get<T>(key: string | string[], fallback?: T): unknown | T
     get<T>(key: string | string[], fallback?: T): unknown {
@@ -80,12 +81,10 @@ export default class DataHandler {
         return this.get(SETTINGS) as MultiviewSettings
     }
 
-    disconnect(): void {
-        this._disconnected = true
-    }
-
     async flush(): Promise<boolean> {
-        if (this._disconnected) return false
+        if (DataHandler._disconnected.has(this)) {
+            return false
+        }
 
         await this._plugin.saveData(this._data)
         return true
@@ -167,4 +166,14 @@ export default class DataHandler {
         container[keys[keys.length - 1]] = value
         return await this.flush()
     }
+}
+
+
+export interface LoadOrderEntry {
+    paths: string[]
+}
+
+export interface MultiviewSettings {
+    enableMultiviewGlobal: boolean
+    loadOrder: LoadOrderEntry[]
 }

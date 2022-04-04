@@ -1,34 +1,38 @@
 import { Plugin, PluginSettingTab, Setting } from 'obsidian'
-import DataHandler, { LoadOrderEntry } from './multiview/data'
-import MultiviewAPI from './multiview/api'
+import { DataHandler, LoadOrderEntry } from './multiview/data'
+import { MultiviewAPI } from './multiview/api'
 
 export default class MultiviewPlugin extends Plugin {
-    api: MultiviewAPI
+    private _api: MultiviewAPI
+
+
+    get api() { return this._api }
+
 
     async onload() {
-        this.api = new MultiviewAPI(this, await DataHandler.load(this))
-        this.app.workspace.onLayoutReady(async () => await this.api.loader.reload())
+        this._api = new MultiviewAPI(this, await DataHandler.load(this))
+        this.app.workspace.onLayoutReady(async () => await this._api.loader.reload())
 
         this.addSettingTab(new MultiviewSettingsTab(this))
         this.addCommand({
             id: 'reload-modules',
             name: 'Reload JavaScript modules',
-            callback: this.api.loader.reload.bind(this.api.loader)
+            callback: this._api.loader.reload.bind(this._api.loader)
         })
 
-        if (this.api.data.getSetting('enableMultiviewGlobal')) {
-            window.multiview = this.api
+        if (this._api.data.getSetting('enableMultiviewGlobal')) {
+            window.multiview = this._api
         }
     }
 
     onunload() {
-        this.api.data.disconnect()
+        DataHandler.disconnect(this._api.data)
 
-        if (window.multiview === this.api) {
+        if (window.multiview === this._api) {
             delete window.multiview
         }
 
-        this.api = undefined
+        this._api = undefined
     }
 }
 
@@ -36,6 +40,7 @@ class MultiviewSettingsTab extends PluginSettingTab {
     constructor(public plugin: MultiviewPlugin) {
         super(plugin.app, plugin)
     }
+
 
     display() {
         this.containerEl.empty()

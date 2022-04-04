@@ -1,8 +1,7 @@
 import { requestUrl } from 'obsidian'
-import { getCSSLength } from './util'
-import MultiviewPlugin from '../../main'
-import { Creator } from './create'
-import { AudioOptions, EmbedOptions, ImageOptions, PDFEmbedOptions, VideoOptions, YouTubeEmbedOptions } from './types'
+import type MultiviewPlugin from '../../main'
+import type { Creator } from './create'
+import type { AudioOptions, EmbedOptions, ImageOptions, PDFEmbedOptions, VideoOptions, YouTubeEmbedOptions } from './types'
 
 
 const audioHandler: EmbedHandler = {
@@ -61,6 +60,23 @@ const embedHandlers = [
     pdfHandler,
     youtubeHandler,
 ]
+const cssUnits = new Set([
+    '%',
+    'CM',
+    'MM',
+    'IN',
+    'PX',
+    'PT',
+    'PC',
+    'EM',
+    'EX',
+    'CH',
+    'VW',
+    'VH',
+    'REM',
+    'VMIN',
+    'VMAX',
+])
 
 
 function buildStyleString(contents: Record<string, string | number>, existing: unknown) {
@@ -85,6 +101,22 @@ function extractURLComponents(url: string): URLComponents {
     }
 
     return { url }
+}
+
+export function getCSSLength(value: unknown, fallback: string=null) {
+    if (!value) return fallback
+
+    const str = value.toString()
+    for (let i = 1; i < 5; i++) {
+        if (str.length <= i) break
+
+        if (cssUnits.has(str.slice(-i).toUpperCase())) {
+            return str
+        }
+    }
+
+    if (isNaN(parseInt(str))) return fallback
+    return `${value}px`
 }
 
 function tryHandle(mod: EmbedCreator, handler: EmbedHandler, options: EmbedOptions): HTMLElement | false {
@@ -236,6 +268,7 @@ class _EmbedCreator extends Function {
     pdfAsync: (options: PDFEmbedOptions) => Promise<HTMLSpanElement>
     video: (options: Omit<EmbedOptions & VideoOptions, 'src'>) => HTMLVideoElement | HTMLSpanElement
     youtube: (options: YouTubeEmbedOptions) => HTMLSpanElement
+
 
     //@ts-ignore
     constructor(plugin: MultiviewPlugin, create: Creator) {

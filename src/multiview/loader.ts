@@ -1,39 +1,12 @@
 import { Notice, TFile, TFolder } from 'obsidian'
-import MultiviewPlugin from '../main'
 import { MultiviewInstance } from './instance'
-
-type ModuleAwaiter = (success: boolean, err?: unknown) => void
-export type ExtensionHandler = (info: { path: string, source: string, skip: symbol }) => Promise<unknown>
-export type ModuleCallback = (skip: symbol) => unknown
-
-interface JsRecord {
-    callbacks: ModuleAwaiter[]
-    awaiting: JsRecord[]
-    path: string
-}
-
-interface ModuleErrorOptions {
-    cause?: unknown
-    source?: string
-}
+import type MultiviewPlugin from '../main'
 
 
 const SKIP = Symbol('SKIP')
 
-class ModuleLoadError extends Error {
-    source?: string
-    cause?: unknown
 
-    constructor(message: string, options?: ModuleErrorOptions) {
-        super(message)
-
-        this.name = 'ModuleLoadError'
-        this.source = options?.source
-        this.cause = options?.cause
-    }
-}
-
-export default class Loader {
+export class Loader {
     private _extensions: Record<string, ExtensionHandler> = {}
     private _cache: Record<string, unknown> = {}
     private _errors: Record<string, unknown> = {}
@@ -433,4 +406,33 @@ export default class Loader {
         delete this._loading[path]
         return success
     }
+}
+
+class ModuleLoadError extends Error {
+    public source?: string
+    public cause?: unknown
+
+    constructor(message: string, options?: ModuleErrorOptions) {
+        super(message)
+
+        this.name = 'ModuleLoadError'
+        this.source = options?.source
+        this.cause = options?.cause
+    }
+}
+
+
+type ModuleAwaiter = (success: boolean, err?: unknown) => void
+export type ExtensionHandler = (info: { path: string, source: string, skip: symbol }) => Promise<unknown>
+export type ModuleCallback = (skip: symbol) => unknown
+
+interface JsRecord {
+    callbacks: ModuleAwaiter[]
+    awaiting: JsRecord[]
+    path: string
+}
+
+interface ModuleErrorOptions {
+    cause?: unknown
+    source?: string
 }

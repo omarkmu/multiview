@@ -1,13 +1,11 @@
 import { Component, setIcon } from 'obsidian'
-import MultiviewPlugin from '../../main'
-import { getCSSLength } from './util'
-import { EmbedCreator } from './embed'
-import {
+import { getCSSLength, EmbedCreator } from './embed'
+import type MultiviewPlugin from '../../main'
+import type {
     AnchorOptions,
     AudioOptions,
     CreateOptions,
     DropdownOptions,
-    EventListenerMap,
     IconOptions,
     ImageOptions,
     PillOptions,
@@ -15,30 +13,6 @@ import {
     VideoOptions
 } from './types'
 
-
-function addEventListeners(node: Node, events: EventListenerMap, component: Component) {
-    for (const [event, listener] of Object.entries(events)) {
-        if (!events.hasOwnProperty(event)) continue
-        node.addEventListener(event, listener)
-        component.register(() => node.removeEventListener(event, listener))
-    }
-}
-
-function normalizeURL(url: string, internal: boolean) {
-    try {
-        if (internal) {
-            const slashIdx = url.lastIndexOf('/')
-            url = slashIdx === -1 ? url : url.slice(slashIdx + 1)
-
-            return url.endsWith('.md') ? url.slice(0, -3) : url
-        } else {
-            const hostname = (new URL(url)).hostname
-            return hostname.startsWith('www.') ? hostname.slice(4) : hostname
-        }
-    } catch {
-        return url
-    }
-}
 
 const spinnerCounts: Record<string, number> = {
     circle: 1,
@@ -157,17 +131,35 @@ const tagNames: (keyof HTMLElementTagNameMap)[] = [
 ]
 
 
+function normalizeURL(url: string, internal: boolean) {
+    try {
+        if (internal) {
+            const slashIdx = url.lastIndexOf('/')
+            url = slashIdx === -1 ? url : url.slice(slashIdx + 1)
+
+            return url.endsWith('.md') ? url.slice(0, -3) : url
+        } else {
+            const hostname = (new URL(url)).hostname
+            return hostname.startsWith('www.') ? hostname.slice(4) : hostname
+        }
+    } catch {
+        return url
+    }
+}
+
+
 class _Creator extends Function {
-    anchor: (options?: string | AnchorOptions, callback?: (el: HTMLAnchorElement) => void) => HTMLAnchorElement
-    audio: (options?: string | AudioOptions, callback?: (el: HTMLAudioElement) => void) => HTMLAudioElement
-    dropdown: (options?: string | DropdownOptions, callback?: (el: HTMLSelectElement) => void) => HTMLSelectElement
-    embed: EmbedCreator
-    icon: (options: string | IconOptions, callback?: (el: SVGElement | null) => void) => SVGElement | null
-    img: (options?: string | ImageOptions, callback?: (el: HTMLImageElement) => void) => HTMLImageElement
-    paragraph: (options?: string | CreateOptions, callback?: (el: HTMLParagraphElement) => void) => HTMLParagraphElement
-    pill: (options?: string | PillOptions, callback?: (el: HTMLDivElement) => void) => HTMLDivElement
-    spinner: (options?: string | SpinnerOptions, callback?: (el: HTMLElement) => void) => HTMLDivElement
-    video: (options?: string | VideoOptions, callback?: (el: HTMLVideoElement) => void) => HTMLVideoElement
+    public anchor: (options?: string | AnchorOptions, callback?: (el: HTMLAnchorElement) => void) => HTMLAnchorElement
+    public audio: (options?: string | AudioOptions, callback?: (el: HTMLAudioElement) => void) => HTMLAudioElement
+    public dropdown: (options?: string | DropdownOptions, callback?: (el: HTMLSelectElement) => void) => HTMLSelectElement
+    public embed: EmbedCreator
+    public icon: (options: string | IconOptions, callback?: (el: SVGElement | null) => void) => SVGElement | null
+    public img: (options?: string | ImageOptions, callback?: (el: HTMLImageElement) => void) => HTMLImageElement
+    public paragraph: (options?: string | CreateOptions, callback?: (el: HTMLParagraphElement) => void) => HTMLParagraphElement
+    public pill: (options?: string | PillOptions, callback?: (el: HTMLDivElement) => void) => HTMLDivElement
+    public spinner: (options?: string | SpinnerOptions, callback?: (el: HTMLElement) => void) => HTMLDivElement
+    public video: (options?: string | VideoOptions, callback?: (el: HTMLVideoElement) => void) => HTMLVideoElement
+
 
     //@ts-ignore
     constructor(plugin: MultiviewPlugin, parent?: HTMLElement | (() => HTMLElement), owner?: Component) {
@@ -181,8 +173,17 @@ class _Creator extends Function {
             }
 
             const el = createEl(tag, options)
-            if (options.events) addEventListeners(el, options.events, component)
-            if (options.children) el.append(...options.children.filter(n => n))
+
+            if (options.events) {
+                for (const [k, v] of Object.entries(options.events)) {
+                    el.addEventListener(k, v)
+                    component.register(() => el.removeEventListener(k, v))
+                }
+            }
+
+            if (options.children) {
+                el.append(...options.children.filter(n => n))
+            }
 
             callback?.(el)
             return el

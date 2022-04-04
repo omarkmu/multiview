@@ -1,5 +1,5 @@
-import { MultiviewContext, PageContext, SectionContext } from './context'
-import { MultiviewIndex } from './instance'
+import type { MultiviewContext, PageContext, SectionContext } from './context'
+import type { MultiviewIndex } from './instance'
 
 export interface MultiviewView<T extends MultiviewContext> {
     clearOnLoad?: boolean

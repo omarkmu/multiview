@@ -1,27 +1,28 @@
 import { Creator, DropdownOptions } from '../modules/creator'
-import { MultiviewState } from './navigator'
-import { MultiviewInstance, MultiviewIndex } from './instance'
-import { PageView, SectionView } from './view'
+import type { MultiviewState } from './navigator'
+import type { MultiviewInstance, MultiviewIndex } from './instance'
+import type { PageView, SectionView } from './view'
 
-export interface SectionDropdownOptions extends Omit<DropdownOptions, 'selectedIndex'> {
-    selectedIndex?: MultiviewIndex
-    displayKey?: MultiviewIndex
-}
 
 export abstract class MultiviewContext {
     protected _create: Creator
+
 
     constructor(protected _instance: MultiviewInstance, protected _index: MultiviewIndex, protected _view: unknown) {
         this._create = new Creator(this._instance.plugin, ()=> this.container, this._instance)
     }
 
+
     abstract get container(): HTMLElement
     abstract get view(): unknown
+
 
     get create() { return this._create }
     get navigator() { return this._instance.navigator }
     get index() { return this._instance.navigator.index }
     get state() { return this._instance.navigator.state }
+    get id() { return this._instance.id }
+
 
     get autosave() { return this._instance.options.autosave }
     set autosave(value) { this._instance.options.autosave = value }
@@ -31,8 +32,6 @@ export abstract class MultiviewContext {
 
     get enableSync() { return this._instance.options.enableSync }
     set enableSync(value) { this._instance.options.enableSync = value }
-
-    get id() { return this._instance.id }
 
     get resetScroll() { return this._instance.options.resetScroll }
     set resetScroll(value) { this._instance.options.resetScroll = value }
@@ -100,4 +99,10 @@ export class SectionContext extends MultiviewContext {
 
         return this
     }
+}
+
+
+export interface SectionDropdownOptions extends Omit<DropdownOptions, 'selectedIndex'> {
+    selectedIndex?: MultiviewIndex
+    displayKey?: MultiviewIndex
 }
