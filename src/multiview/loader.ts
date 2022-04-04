@@ -22,7 +22,6 @@ const SKIP = Symbol('SKIP')
 class ModuleLoadError extends Error {
     source?: string
     cause?: unknown
-    baseStack: string
 
     constructor(message: string, options?: ModuleErrorOptions) {
         super(message)
@@ -30,19 +29,6 @@ class ModuleLoadError extends Error {
         this.name = 'ModuleLoadError'
         this.source = options?.source
         this.cause = options?.cause
-        this.baseStack = options?.source ? `at ${options.source}: ${this.message}` : ''
-
-        const cause = options.cause
-        if (cause instanceof ModuleLoadError) {
-            this.baseStack += `\n${cause.baseStack}`
-        } else if (cause instanceof Error) {
-            this.baseStack += `\n${cause.message}`
-        } else if (cause) {
-            this.baseStack += `\n${cause}`
-        }
-
-        this.baseStack = this.baseStack.trim()
-        this.stack = `${message}\n${this.baseStack.replace(/^at/gm, '\tat')}`.trim()
     }
 }
 
@@ -325,24 +311,15 @@ export default class Loader {
         this._paths = new Set()
 
         const seen = new Set<string>()
-        const order = this._plugin.api.data.getSetting('loadOrder')
+        const records = this._plugin.api.data.getSetting('loadOrder')
             .map(entry => this._generateJsRecords(entry.paths, seen))
+            .flat()
 
         let failures = 0
-        for (const records of order) {
-            for (const rec of records) {
-                if (this._cache[rec.path]) continue
-                this._loading[rec.path] = rec
-            }
-
-            const promises = []
-            for (const rec of records) {
-                if (this._cache[rec.path]) continue
-                promises.push(this._loadFile(rec.path))
-            }
-
-            const results = await Promise.all(promises)
-            failures += results.filter(value => !value).length
+        for (const rec of records) {
+            if (this._cache[rec.path]) continue
+            this._loading[rec.path] = rec
+            failures += (await this._loadFile(rec.path)) ? 0 : 1
         }
 
         if (failures > 0) {
@@ -440,7 +417,7 @@ export default class Loader {
             return this._signal(path, true)
         } catch (e) {
             this._errors[path] = e
-            console.error(new ModuleLoadError(`failed to load file ${path}`, { cause: e }))
+            console.error(`failed to load file ${path}:`, e)
             return this._signal(path, false, e)
         }
     }
