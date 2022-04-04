@@ -125,7 +125,10 @@ export class MultiviewInstance extends MarkdownRenderChild {
     }
 
     private static _deregisterInstance(instance: MultiviewInstance) {
-        if (!instance.id || !(instance.id in this._instanceMap)) return
+        if (!instance.id || !(instance.id in this._instanceMap)) {
+            this._freeInstances.delete(instance)
+            return
+        }
 
         this._instanceMap[instance.id].remove(instance)
         if (this._instanceMap[instance.id].length === 0) {
@@ -134,7 +137,10 @@ export class MultiviewInstance extends MarkdownRenderChild {
     }
 
     private static _registerInstance(instance: MultiviewInstance) {
-        if (!instance.id) return
+        if (!instance.id) {
+            this._freeInstances.add(instance)
+            return
+        }
 
         if (!(instance.id in this._instanceMap)) {
             this._instanceMap[instance.id] = []
