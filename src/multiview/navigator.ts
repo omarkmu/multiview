@@ -77,12 +77,11 @@ export class MultiviewNavigator {
             return Promise.reject('supplied delta is beyond the history length')
         }
 
-        const oldIndex = this._entry.index
         for (let i = 0; i < value; i++) {
             opposite.push(this._entry)
             this._entry = target.pop()
         }
 
-        return this._instance.go(this._entry.index, { oldIndex, replace: false })
+        return this._instance.go(this._entry.index, { replace: false })
     }
 }

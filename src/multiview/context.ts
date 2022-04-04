@@ -20,6 +20,7 @@ export abstract class MultiviewContext {
 
     get create() { return this._create }
     get navigator() { return this._instance.navigator }
+    get index() { return this._instance.navigator.index }
     get state() { return this._instance.navigator.state }
 
     get autosave() { return this._instance.options.autosave }
@@ -27,6 +28,9 @@ export abstract class MultiviewContext {
 
     get clearOnLoad() { return this._instance.options.clearOnLoad }
     set clearOnLoad(value) { this._instance.options.clearOnLoad = value }
+
+    get enableSync() { return this._instance.options.enableSync }
+    set enableSync(value) { this._instance.options.enableSync = value }
 
     get id() { return this._instance.id }
 
@@ -51,12 +55,12 @@ export abstract class MultiviewContext {
 }
 
 export class PageContext extends MultiviewContext {
-    get container() { return this._instance.content[this._index] }
+    get container() { return this._instance.views[this._index]?.container }
     get view(): PageView { return this._view as PageView }
 }
 
 export class SectionContext extends MultiviewContext {
-    get container() { return this._instance.sectionContent[this._index] }
+    get container() { return this._instance.sections[this._index]?.container }
     get view(): SectionView { return this._view as SectionView }
 
     addDropdown(options: SectionDropdownOptions = {}) {
@@ -70,7 +74,7 @@ export class SectionContext extends MultiviewContext {
             selectedIndex ??= this.navigator.index
             indexMap = []
             values = Object.entries(this._instance.views).map(([k, v], i) => {
-                const value = options.displayKey ? v[options.displayKey] : k
+                const value = options.displayKey ? v.view[options.displayKey] : k
                 if (k === selectedIndex) selectedIndex = i
                 indexMap[i] = value
                 return value

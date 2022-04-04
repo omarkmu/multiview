@@ -7,16 +7,22 @@ import MultiviewPlugin from '../main'
 export type MultiviewIndex = number | string
 
 
-interface SectionOrdering {
-    index: MultiviewIndex,
-    order: number,
-    section: SectionView
+interface ViewInfo<V, C> {
+    container?: HTMLElement
+    context?: C
+    index: MultiviewIndex
+    view: V
+}
+
+type PageInfo = ViewInfo<PageView, PageContext>
+
+interface SectionInfo extends ViewInfo<SectionView, SectionContext> {
+    order: number
 }
 
 interface MultiviewGoOptions {
     newState?: MultiviewState
     replace?: boolean
-    oldIndex?: MultiviewIndex
     enableSync?: boolean
 }
 
@@ -86,73 +92,67 @@ function getContainingView(workspace: Workspace, el: HTMLElement): ObsidianView 
 
 
 export class MultiviewInstance extends MarkdownRenderChild {
-    navigator: MultiviewNavigator
-    component: Component
-    container: HTMLElement
-    id?: string
-    options: MultiviewOptions
-
-    views: Record<MultiviewIndex, PageView>
-    content: Record<MultiviewIndex, HTMLElement> = {}
-    context: Record<MultiviewIndex, PageContext> = {}
-
-    sections: Record<MultiviewIndex, SectionView> = {}
-    sectionOrdering: SectionOrdering[] = []
-    sectionContent: Record<MultiviewIndex, HTMLElement> = {}
-    sectionContext: Record<MultiviewIndex, SectionContext> = {}
-
-    private static _instanceMap: Record<string, MultiviewInstance[]> = {}
+    private static _instanceMap: Record<string, Set<MultiviewInstance>> = {}
     private static _freeInstances: Set<MultiviewInstance> = new Set()
 
     static clearInstances() {
-        for (const instance of Object.values(this._instanceMap).flat()) {
-            instance.component.removeChild(instance)
+        for (const set of Object.values(this._instanceMap).flat()) {
+            for (const instance of set) instance._component.removeChild(instance)
         }
 
         for (const instance of this._freeInstances) {
-            instance.component.removeChild(instance)
+            instance._component.removeChild(instance)
         }
     }
 
     private static _broadcast(instance: MultiviewInstance, idx: MultiviewIndex, options: MultiviewGoOptions) {
-        if (!instance.id || !this._instanceMap[instance.id]) return
-        if (!instance.options.enableSync || options.enableSync === false) return
+        if (!instance._id || !this._instanceMap[instance._id]) return
+        if (!instance._options.enableSync || options.enableSync === false) return
 
-        for (const other of this._instanceMap[instance.id]) {
-            if (other === instance) continue
+        for (const other of this._instanceMap[instance._id]) {
+            if (other === instance || !other._options.enableSync) continue
             other.go(idx, { ...options, enableSync: false })
         }
     }
 
     private static _deregisterInstance(instance: MultiviewInstance) {
-        if (!instance.id || !(instance.id in this._instanceMap)) {
+        if (!instance._id || !(instance._id in this._instanceMap)) {
             this._freeInstances.delete(instance)
             return
         }
 
-        this._instanceMap[instance.id].remove(instance)
-        if (this._instanceMap[instance.id].length === 0) {
-            delete this._instanceMap[instance.id]
+        this._instanceMap[instance._id].delete(instance)
+        if (this._instanceMap[instance._id].size === 0) {
+            delete this._instanceMap[instance._id]
         }
     }
 
     private static _registerInstance(instance: MultiviewInstance) {
-        if (!instance.id) {
+        if (!instance._id) {
             this._freeInstances.add(instance)
             return
         }
 
-        if (!(instance.id in this._instanceMap)) {
-            this._instanceMap[instance.id] = []
+        if (!(instance._id in this._instanceMap)) {
+            this._instanceMap[instance._id] = new Set()
         }
 
-        this._instanceMap[instance.id].push(instance)
+        this._instanceMap[instance._id].add(instance)
     }
+
+    private _component: Component
+    private _container: HTMLElement
+    private _id?: string
+    private _navigator: MultiviewNavigator
+    private _options: MultiviewOptions
+    private _sections: Record<MultiviewIndex, SectionInfo> = {}
+    private _sectionOrder: SectionInfo[] = []
+    private _views: Record<MultiviewIndex, PageInfo>
 
 
     constructor(public plugin: MultiviewPlugin, options: MultiviewInitOptions) {
         const {
-            views: _views,
+            views,
             parent=null,
             sections: _sections=null,
             header=null,
@@ -170,7 +170,6 @@ export class MultiviewInstance extends MarkdownRenderChild {
             enableSync=true
         } = options
 
-        const views = {..._views}
         const indices = Object.keys(views)
         const persistenceEnabled = loadState && id
         const persisted = persistenceEnabled && plugin.api.data.getPersistence(id)
@@ -201,13 +200,17 @@ export class MultiviewInstance extends MarkdownRenderChild {
             ...footer && { footer },
         }
 
-        super(parent.container)
+        const container = createDiv({
+            cls: 'mv-container',
+            attr: { ...id && { ['data-mv-id']: id } }
+        })
 
-        this.id = id
-        this.views = views
-        this.container = parent.container
-        this.component = parent?.component ?? plugin
-        this.options = {
+        super(parent.container.appendChild(container))
+
+        this._id = id
+        this._container = container
+        this._component = parent?.component ?? plugin
+        this._options = {
             autosave,
             trackHistory,
             clearOnLoad,
@@ -215,45 +218,63 @@ export class MultiviewInstance extends MarkdownRenderChild {
             enableSync
         }
 
-        this.sectionOrdering = Object.entries(sections)
-            .filter(v => v)
+        this._views = Object.entries(views)
+            .filter(([k, v]) => k && v)
+            .map(([k, v]) => ({
+                index: k,
+                view: v
+            }))
+            .reduce<Record<string, PageInfo>>((m, v) => {
+                m[v.index] = v
+                return m
+            }, {})
+        this._sectionOrder = Object.entries(sections)
+            .filter(([k, v]) => k && v)
             .map(([k, v]) => {
-                this.sections[k] = v
-                return {
+                const entry = {
                     index: k,
                     order: typeof v.order === 'number' ? v.order : 0,
-                    section: v
+                    view: v
                 }
+
+                this._sections[k] = entry
+                return entry
             })
             .sort((a, b) => a.order - b.order)
 
-        this.navigator = new MultiviewNavigator(this, initialState, initialIndex)
-        this.component.addChild(this)
+        this._navigator = new MultiviewNavigator(this, initialState, initialIndex)
+        this._component.addChild(this)
     }
+
+
+    get container(): HTMLElement { return this._container }
+    get id(): string { return this._id }
+    get navigator(): MultiviewNavigator { return this._navigator }
+    get options(): MultiviewOptions { return this._options }
+    get sections(): Record<MultiviewIndex, SectionInfo> { return this._sections }
+    get views(): Record<MultiviewIndex, PageInfo> { return this._views }
 
 
     onload(): void {
         MultiviewInstance._registerInstance(this)
-        this.go(this.navigator.index, { replace: false })
+        this.go(this._navigator.index, { replace: false })
     }
 
     onunload(): void {
         MultiviewInstance._deregisterInstance(this)
-
-        for (const el of Object.values(this.content).flat()) el.detach()
-        for (const el of Object.values(this.sectionContent).flat()) el.detach()
+        this._container.empty()
     }
 
 
     doResetScroll(): boolean {
-        const view = getContainingView(this.plugin.app.workspace, this.container)
+        const view = getContainingView(this.plugin.app.workspace, this._container)
         if (!view) return false
 
         const markdownEmbeds = view.contentEl?.getElementsByClassName('markdown-embed')
         if (markdownEmbeds) {
             for (let i = 0; i < markdownEmbeds.length; i++) {
                 const embed = markdownEmbeds[i]
-                if (!embed.contains(this.container)) continue
+                if (!embed.contains(this._container)) continue
 
                 const content = embed.getElementsByClassName('markdown-embed-content')?.[0]
                 if (!content) return false
@@ -268,97 +289,101 @@ export class MultiviewInstance extends MarkdownRenderChild {
     }
 
     async go(idx: MultiviewIndex, options?: MultiviewGoOptions): Promise<void> {
-        if (!this.views[idx]) return Promise.reject(`${idx} is not a valid view index`)
+        if (!this._views[idx]) return Promise.reject(`${idx} is not a valid view index`)
         MultiviewInstance._broadcast(this, idx, options)
 
-        const oldIdx = options?.oldIndex ?? this.navigator.index
         const replace = options?.replace ?? true
         const newState = options?.newState
 
-        if (this.options.trackHistory && replace) {
-            this.navigator.push(newState)
+        if (this._options.trackHistory && replace) {
+            this._navigator.push(newState)
         } else if (newState) {
-            this.navigator.update(newState, replace)
+            this._navigator.update(newState, replace)
         }
 
-        const view = this.views[idx]
-        if (!(idx in this.content)) {
-            const ctx = this.context[idx] = new PageContext(this, idx, view)
+        const info = this._views[idx]
+        const view = info.view
+        if (!info.container) {
+            const ctx = info.context = new PageContext(this, idx, view)
             const content = view.content
                 ? await view.content(ctx)
                 : createDiv()
 
-            if (!(content instanceof HTMLElement))
+            if (!(content instanceof HTMLElement)) {
                 return Promise.reject(`expected view ${idx}.content to return an HTML element`)
-            this.content[idx] = content
-        }
-
-        this.navigator.entry.index = idx
-        if (view.load) {
-            if (view.clearOnLoad || this.options.clearOnLoad && view.clearOnLoad !== false) {
-                this.content[idx].empty()
             }
 
-            await view.load(this.context[idx])
+            info.container = content
+        }
+
+        this._navigator.entry.index = idx
+        if (view.load) {
+            if (view.clearOnLoad || this._options.clearOnLoad && view.clearOnLoad !== false) {
+                info.container.empty()
+            }
+
+            await view.load(info.context)
         }
 
         const prepend = []
         const append = []
-        for (const { section, index } of this.sectionOrdering) {
+        for (const entry of this._sectionOrder) {
+            const { view: section, index } = entry
             if (view.excludeSections?.contains(index)) continue
 
-            if (!this.sectionContent[index]) {
-                const ctx = this.sectionContext[index] = new SectionContext(this, index, section)
+            if (!entry.container) {
+                const ctx = entry.context = new SectionContext(this, index, section)
                 const content = section.content
                     ? await section.content(ctx)
                     : createDiv()
 
-                if (!(content instanceof HTMLElement)) return Promise.reject(`expected section ${index}.content to return an HTML element`)
-                this.sectionContent[index] = content
+                if (!(content instanceof HTMLElement)) {
+                    return Promise.reject(`expected section ${index}.content to return an HTML element`)
+                }
+
+                entry.container = content
             }
 
             if (section.load) {
-                if (section.clearOnLoad || this.options.clearOnLoad && section.clearOnLoad !== false) {
-                    this.sectionContent[index].empty()
+                if (section.clearOnLoad || this._options.clearOnLoad && section.clearOnLoad !== false) {
+                    entry.container.empty()
                 }
 
-                await section.load(this.sectionContext[index])
+                await section.load(entry.context)
             }
 
             if (section.prepend || (index === 'header' && section.prepend !== false)) {
-                prepend.push(this.sectionContent[index])
+                prepend.push(entry.container)
             } else {
-                append.push(this.sectionContent[index])
+                append.push(entry.container)
             }
         }
 
         // detach old view
-        for (const el of Object.values(this.sectionContent))
-            el.detach()
-        this.content[oldIdx]?.detach()
+        this._container.empty()
 
         // attach new view
-        this.container.append(this.content[idx])
+        this._container.append(info.container)
         for (let i = prepend.length - 1; i >= 0; i--)
-            this.container.prepend(prepend[i])
-        for (const el of append) this.container.append(el)
+            this._container.prepend(prepend[i])
+        for (const el of append) this._container.append(el)
 
-        if (view.resetScroll || this.options.resetScroll && view.resetScroll !== false) {
+        if (view.resetScroll || this._options.resetScroll && view.resetScroll !== false) {
             this.doResetScroll()
         }
 
-        if (this.id && this.options.autosave) {
+        if (this._id && this._options.autosave) {
             await this.save()
         }
     }
 
     async save(): Promise<boolean> {
-        if (!this.id) return false
-        return await this.plugin.api.data.setPersistence(this.id, this.navigator.entry)
+        if (!this._id) return false
+        return await this.plugin.api.data.setPersistence(this._id, this._navigator.entry)
     }
 
     setTitle(title: string): boolean {
-        const view = getContainingView(this.plugin.app.workspace, this.container)
+        const view = getContainingView(this.plugin.app.workspace, this._container)
         if (!view) return false
 
         let header
@@ -366,7 +391,7 @@ export class MultiviewInstance extends MarkdownRenderChild {
         if (markdownEmbeds) {
             for (let i = 0; i < markdownEmbeds.length; i++) {
                 const embed = markdownEmbeds[i]
-                if (!embed.contains(this.container)) continue
+                if (!embed.contains(this._container)) continue
 
                 header = embed.getElementsByClassName('markdown-embed-title')?.[0]
                 break
