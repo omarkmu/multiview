@@ -11,8 +11,10 @@ export class MultiviewNavigator {
     private _backEntries: NavigatorEntry[] = []
     private _forwardEntries: NavigatorEntry[] = []
     private _entry: NavigatorEntry
+    private _limit: number
 
     constructor(private _instance: MultiviewInstance, state: MultiviewState, index: MultiviewIndex) {
+        this._limit = 50
         this._entry = {
             state,
             index
@@ -41,6 +43,11 @@ export class MultiviewNavigator {
 
     push(state?: MultiviewState) {
         this._forwardEntries = []
+
+        if (this._backEntries.length === this._limit) {
+            this._backEntries.shift()
+        }
+
         this._backEntries.push(this._entry)
 
         this._entry = {
@@ -82,6 +89,6 @@ export class MultiviewNavigator {
             this._entry = target.pop()
         }
 
-        return this._instance.go(this._entry.index, { replace: false })
+        return this._instance.go(this._entry.index, { newState: this._entry.state, updateHistory: false })
     }
 }

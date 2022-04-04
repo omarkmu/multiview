@@ -23,6 +23,7 @@ interface SectionInfo extends ViewInfo<SectionView, SectionContext> {
 interface MultiviewGoOptions {
     newState?: MultiviewState
     replace?: boolean
+    updateHistory?: boolean
     enableSync?: boolean
 }
 
@@ -264,7 +265,7 @@ export class MultiviewInstance extends MarkdownRenderChild {
 
     onload(): void {
         const syncIndex = MultiviewInstance._registerInstance(this)
-        this.go(syncIndex ?? this._navigator.index, { replace: false })
+        this.go(syncIndex ?? this._navigator.index, { updateHistory: false })
     }
 
     onunload(): void {
@@ -299,10 +300,11 @@ export class MultiviewInstance extends MarkdownRenderChild {
         if (!this._views[idx]) return Promise.reject(`${idx} is not a valid view index`)
         MultiviewInstance._broadcast(this, idx, options)
 
+        const updateHistory = options?.updateHistory ?? true
         const replace = options?.replace ?? true
         const newState = options?.newState
 
-        if (this._options.trackHistory && replace) {
+        if (this._options.trackHistory && updateHistory || updateHistory === true) {
             this._navigator.push(newState)
         } else if (newState) {
             this._navigator.update(newState, replace)
